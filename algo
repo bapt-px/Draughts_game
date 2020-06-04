@@ -1,0 +1,186 @@
+variables : screen, Surface SDL qui sera la surface principal (celle de l'ecran)
+début 
+	screen <- SDL_SetVideoMode(960, 704, 32, SDL_HWSURFACE|SDL_DOUBLEBUF) // initialisation de la fenetre
+	SDL_Init(SDL_INIT_VIDEO) // initialisation de la video 
+	SDL_WM_SetCaption("Jeu de dame") // changement du nom de la fenetre 
+	TTF_Init() // chargement de la bibliotheque TTF pour afficher du texte
+	
+	menu(screen) // renvoie sur la fonction menu en lui donnant screen pour argument
+	
+	SDL_FreeSurface(screen) // liberation de la memoire allouer pour screen
+	SDL_Quit()// liberation de la memoire allouer pour la SDL 
+fin
+
+variables : index, entier servirant a parcourir le tableau de charactere ou l'utilisateur rentre son pseudo 
+			 etape, entier servant a determiner la position dans le menu
+			 continuer, boolean qui confirme la repetition de la boucle 
+			 exit, boolean permettant de quitter le programme 
+			 image, surface contenant l'image de fond 
+			 event, SDL_Event pour determiner les action effectué par l'utilisateur
+			 text, chaine contenant le pseudo du joueur 1
+			 text2, chaine contenant le pseudo du joueur 2 
+Début 
+	image <- IMG_Load("wallpaper.png") // chargement de l'image de fond 
+	tant que continuer faire 
+		si etape = 3 alors
+			continuer <-false  // Si etape est a 3, il faut sortir du menu, donc stoper la boucle 
+		fin
+		si event = SDL_QUIT alors // l'utilisateur veut quitter le programme, on sort de la boucle, puis on arrete la fonction
+			continuer <- false 
+			exit <- false 
+		fin 
+		si event = SDL_MOUSBUTTONUP ET etape =0 alors 
+			si event.button.x < 500 alors 	// l'utilisateur a cliquer sur jouer contre IA, les joueur sont automatiquement nommé
+				etape <- 3 
+				text <- "ordinateur"
+				text2 <- "joueur"
+			fin 
+			sinon 
+				etape <- etape + 1 // l'utilisateur joue contre un joueur, passage a l'etape suivante 
+			fin 
+		fin 
+		si event = SDL.KEYDOWN 
+			si event.key = F4 alors  // appuie sur F4, quitter le programme
+				continuer <- false 
+				exit <- true 
+			fin
+			si etape = 1 OU etape = 2 alors 
+				si event.key >=97 OU event.key <=122 alors // un charactere est utilisé, le rentrer dans la chaine correspondante 
+					si etape = 1 alors 
+						text[index] <- event.key 
+					fin 
+					sinon 
+						text2[index] <- event.key 
+					fin 
+					index <- index + 1
+				fin
+				sinon si event.key = BACKSPACE // appuie sur supprimer, suppression du dernier charactere 
+					text[index] = 32 // 32 est un espace 
+					index <- index - 1
+				fin 
+				sinon si event.key = RETURN // appuie sur la touche entrer, passage a l'etape suivante 
+					index <- 0 
+					etape <- etape + 1 
+				fin 
+			fin 
+		fin 
+		SDL_BlitSurface(image, NULL, screen, NULL) // afficher image sur screen a la position 0; 0
+		    si etape = 0 alors
+                printText(screen, "Jeu de dame", 200, 5, "AlphaWood", 100, {255,255,255}) // afficher Jeu de dame, a 200; 5 avec la police "alphaWood" avec une taille de 100 pixel et la couleur blanche 
+                printText(screen, "1. Jouer contre IA", 32, 165, "angelina", 50, {255,255,255})
+                printText(screen, "2. Jouer contre un joueur", 480, 165, "angelina", 50, {255,255,255})
+			fin
+            si etape = 1 OU etape = 2 alors
+                printText(screen, "Jeu de dame", 200, 5, "AlphaWood", 100, {255,255,255})
+                si etape = 1 alors
+                    printText(screen, "Choisir pseudo joueur 1 :", 32, 165, "angelina", 50, {255,255,255})
+                    printText(screen, text  , 460, 165, "angelina", 50, {255,255,255})
+				fin
+                sinon
+                    printText(screen, "Choisir pseudo joueur 2 :", 32, 165, "angelina", 50, {255,255,255})
+                    printText(screen, text2, 460, 165, "angelina", 50, {255,255,255})
+                fin
+            fin
+            SDL_Flip(screen) // mise a jour de l'ecran 
+		fin
+	fin
+	SDL_FreeSurface(image) // sorti du menu, liberation de la memoire allouer Pour la surface image 
+	si exit = false alors 	// si la fonction a été terminer dans le but de passer au jeu, Sinon, la fonction se fini, le programme se termine
+		jeu(screen, text, text2)
+	fin
+fin 
+
+
+
+Algorithme : printText(SDL_Surface *screen, char text[], int x, int y, char police[], int sz, SDL_Color color)
+variables : position, SDL_Rect position du texte 
+			 surface, SDL_Surface image contenant le texte 
+			 font, TTF_font, police du texte
+Début 
+	position.x <- x
+	position.y <- y 
+	
+	font <- TTF_OpenFont(police, sz) // initialisation de la police 
+	surface = TTF_RenderText_Blended(font, text, color) // creation de la surface 
+	SDL_BlitSurface(surface, NULL, screen, &position) // affichage de la surface sur screen 
+	SDL_FreeSurface(surface) // liberation de la memoire allouer Pour surface 
+    TTF_CloseFont(font) liberation de la memoire allouer Pour font 
+fin
+
+
+variables : plateau, tableau d'entier a 2dimension de taille SIZE * SIZE (SIZE=10)
+			 i, entier 
+			 j, entier
+			 r, entier
+			 index, entier
+			 pionMove, tableau d'entier a 2 dimension contenant les position des pions pouvant etre deplacer de taille [20][2]
+			 posMove, tableau d'entier a 2 dimension contenant les position possible Pour le déplacement de taille[20][2]
+			tour, entier
+			pionManger, tableau d'entier a 2 dimension contenant les position des pions pouvant etre manger[20][2]
+			index2, entier
+			index3, entier 
+			k, entier 
+			z, entier 
+			moveMouse, tableau d'entier contenant la distance entre la souris et les differents pions pouvant etre deplacer
+			choisMouse, entier
+			timePlay, entier 
+
+donnée réferencer : plateau, tableau d'entier a 2dimensions de taille 10*10
+variables : i, entier 
+			 j, entier 
+Début 
+	tant que i<10 faire 
+		tant que j<10 faire 
+			si (i+j)mod 2 = 1 ET i<4 alors 
+				plateau[i][j] <- 1 
+			sinon si (i+j)mod 2 = 1 ET i>5 alors 
+				plateau[i][j] <- 2 
+			fin 
+			j <- j+1
+		fin 
+		i <- i+1 
+	fin 
+fin 
+
+
+
+
+si posMove[0][0] = 9 OU  plateau[ pionMove[0][0] ] [pionMove[0][1] ] = 3 // le pion selectionner est mis a l'emplacement 0 du tableau posMove
+	plateau[ posMove[0][0] ] [posMove[0][1] ] <- 3
+fin
+sinon
+	plateau[ posMove[0][0] ] [posMove[0][1] ] <-  1
+fin
+plateau[ pionMove[0][0] ] [pionMove[0][1] ] = 0
+si canEat alors // Si un pion est capturer 
+	plateau[ pionManger[k][0]] [pionManger[k][1]] <- 0
+	capturer[0][index2] <- plateau[ posMove[0][0] ] [posMove[0][1] ]  // insertion du pion capturer dans le compteur 
+	index2 <- index2 +1
+	timeAnimation <- 0
+fin
+
+tant que i<20 faire 
+	 si posMove[i][0]!=-1 alors 
+		moveMouse[i] <- rac( ((posMove[i][1]+1)*64 - event.motion.x) * ((posMove[i][1]+1)*64 - event.motion.x) + ((posMove[i][0]+1)*64 - event.motion.y) * ((posMove[i][0]+1)*64 - event.motion.y)  ) // si le pion peut etre deplacer, calculer la distance entre celui ci et la souris 
+	sinon
+		moveMouse[i] <- 1000 // moveMouse prend une distance qui sort de la fenetre 
+	fin 
+	si moveMouse[i]<moveMouse[k] alors // Si la dernier distance est plus petite Que la plus petite toruvé au paravent, 
+		k <- i
+}
+
+
+Algorithme 
+variables : oldTime, entier l'ancien temps écouler depuis le lancement du programme 
+			 time, entier, le temps ecouler depuis le dernier rafraichissement 
+			 continuer, boolean initialiser a vrai 
+Début 
+	tant que continuer faire 
+		time <- time + SDL_getTicks() - oldTime
+		oldTime <- SDL_getTicks() 
+		si time > 1000/60 alors 
+			affichage() 
+			time <- 0
+		fin 
+	fin 
+fin 
